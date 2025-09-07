@@ -138,3 +138,33 @@ export const Loginuser = async (req, res) => {
         res.json({ success: false, message: error.message });
     }
 }
+
+export const getProfile=async(req,res)=>{
+    try {
+         const { email } = req.body; 
+         const user = await userModel.findOne({ email }).select("-password");
+         if (!user) {
+            return res.json({ success: false, message: "User doesn't exist" });
+        }
+        res.json({ success: true, userData: user });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+export const Logout = async (req, res) => {
+    try {
+        // Clear the token cookie
+        res.clearCookie("token", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict"
+        });
+
+        res.json({ success: true, message: "Logged out successfully" });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
