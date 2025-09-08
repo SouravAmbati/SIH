@@ -1,8 +1,10 @@
-import { analyzeQuiz, CareerBrief, CareerOptions, DreamAnalyzer, getQuiz } from "../configs/gemini.js";
+import { analyzeQuiz, CareerBrief, CareerOptions, DreamAnalyzer, getCourseOpportunities, getQuiz, getSkillRoadmap, StreamChatBot } from "../configs/gemini.js";
 import analyzerModel from "../models/analyzer.model.js";
 import courseModel from "../models/brief.model.js";
 import careerModel from "../models/careerOptions.model.js";
+import opportunityModel from "../models/opportunities.model.js";
 import streamModel from "../models/stream.model.js";
+import jwt from "jsonwebtoken"
 ; // import your schema
 
 export const getQuizQuestions = async (req, res) => {
@@ -157,3 +159,88 @@ export const Brief = async (req, res) => {
       .json({ success: false, message: error.message });
   }
 };
+
+const chatHistories = {};
+
+export const chatBot = async (req, res) => {
+  try {
+    // 1. Get token from cookies
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({ success: false, message: "Unauthorized - No token" });
+    }
+
+    // 2. Verify token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ success: false, message: "Invalid token" });
+    }
+
+    const userId = decoded.id;
+
+    // 3. Support both POST (body) and GET (query)
+    const stream = req.body?.stream || req.query?.stream;
+    const question = req.body?.question || req.query?.question;
+
+    if (!stream || !question) {
+      return res.status(400).json({ success: false, message: "Stream and question are required" });
+    }
+
+    // 4. Initialize history for this user if not exists
+    if (!chatHistories[userId]) {
+      chatHistories[userId] = [];
+    }
+
+    // 5. Call Gemini (pass stream + history + new question)
+    const result = await StreamChatBot(stream, question, chatHistories[userId]);
+
+    // 6. Save only structured Q&A to history
+    chatHistories[userId].push({
+      student_question: result.student_question,
+      response: result.response,
+      status: result.status
+    });
+
+    // 7. Send response
+    res.json({ success: true, answer: result, history: chatHistories[userId] });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const courseOpportunities = async (req, res) => {
+  try {
+    const { coursename } = req.body;
+
+    if (!coursename) {
+      return res.status(400).json({ success: false, message: "Course name is required" });
+    }
+    const response = await getCourseOpportunities(coursename);
+
+    if (response.error) {
+      return res.status(500).json({ success: false, message: "AI failed to generate opportunities" });
+    }
+    const newEntry = new opportunityModel({
+      course: response.course,
+      trendingFields: response.trendingFields,
+      industryOpportunities: response.industryOpportunities,
+    });
+
+    await newEntry.save();
+    res.json({ success: true, data: newEntry });
+
+  } catch (error) {
+    console.error("Error in courseOpportunities:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const Roadmap=async(req,res)=>{
+  const {skill}=req.body;
+  const response=await getSkillRoadmap(skill)
+  res.json(response);
+}

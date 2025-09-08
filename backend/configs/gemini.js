@@ -364,7 +364,250 @@ Respond strictly in JSON format like this example:
 
 
 
-export {getQuiz,analyzeQuiz,DreamAnalyzer,CareerOptions,CareerBrief,getColleges,getCollegeDetails}
+// async function StreamChatBot(stream, question, history = []) {
+//   const response = await ai.models.generateContent({
+//     model: "gemini-2.5-flash",
+//     contents: `
+// You are an AI education assistant.  
+
+// The student has chosen the academic stream: ${stream}.  
+
+// Your rules:
+// 1. Answer ONLY if the question is strictly related to the given stream (subjects, exams, career paths, higher studies, skills, etc.).  
+// 2. If the question is unrelated, respond with: "I can only help with questions related to your chosen stream."  
+// 3. Maintain conversation context using the history of previous questions and answers.  
+
+// Chat history so far:
+// ${history.map(
+//   (h, i) => `
+// Student: ${h.student_question}
+// AI: ${h.response}
+// `
+// ).join("\n")}
+
+// New student question: ${question}
+
+// Respond strictly in this JSON format:
+
+// {
+//   "stream": "${stream}",
+//   "student_question": "${question}",
+//   "response": "Your answer here",
+//   "status": "valid OR invalid"
+// }
+//     `,
+//     config: {
+//       responseMimeType: "application/json",
+//       responseSchema: {
+//         type: Type.OBJECT,
+//         properties: {
+//           stream: { type: Type.STRING },
+//           student_question: { type: Type.STRING },
+//           response: { type: Type.STRING },
+//           status: { type: Type.STRING, enum: ["valid", "invalid"] }
+//         },
+//         required: ["stream", "student_question", "response", "status"]
+//       }
+//     }
+//   });
+
+//   try {
+//     return JSON.parse(response.text);
+//   } catch (error) {
+//     console.error("Error parsing AI response:", error);
+//     return { error: "Invalid response format from AI" };
+//   }
+// }
+
+
+
+async function StreamChatBot(stream, question, history = []) {
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: `
+You are an AI education assistant.  
+
+The student has chosen the academic stream: ${stream}.  
+
+Your rules:
+1. Answer ONLY if the question is strictly related to the given stream (subjects, exams, career paths, higher studies, skills, etc.).  
+2. If the question is unrelated, respond with: "I can only help with questions related to your chosen stream."  
+3. Maintain conversation context using the history of previous questions and answers.  
+
+Chat history so far:
+${history.map(
+  (h, i) => `
+Student: ${h.student_question}
+AI: ${h.response}
+`
+).join("\n")}
+
+New student question: ${question}
+
+Respond strictly in this JSON format:
+
+{
+  "stream": "${stream}",
+  "student_question": "${question}",
+  "response": "Your answer here",
+  "status": "valid OR invalid"
+}
+    `,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          stream: { type: Type.STRING },
+          student_question: { type: Type.STRING },
+          response: { type: Type.STRING },
+          status: { type: Type.STRING, enum: ["valid", "invalid"] }
+        },
+        required: ["stream", "student_question", "response", "status"]
+      }
+    }
+  });
+
+  try {
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Error parsing AI response:", error);
+    return { error: "Invalid response format from AI" };
+  }
+}
+
+
+
+async function getCourseOpportunities(coursename) {
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: `
+You are an AI career counselor.  
+The student is pursuing the course: ${coursename}.  
+
+Generate insights in **JSON format only** about:  
+1. Trending fields and domains currently in demand related to this course.  
+2. Industry opportunities and job roles that are relevant and in-demand.  
+3. A short explanation (2–3 lines) of why these fields/opportunities are trending.  
+    `,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: "object",
+        properties: {
+          course: { type: "string" },
+          trendingFields: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                field: { type: "string" },
+                reason: { type: "string" }
+              },
+              required: ["field", "reason"]
+            }
+          },
+          industryOpportunities: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                role: { type: "string" },
+                demandReason: { type: "string" }
+              },
+              required: ["role", "demandReason"]
+            }
+          }
+        },
+        required: ["course", "trendingFields", "industryOpportunities"]
+      }
+    }
+  });
+
+  try {
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Error parsing AI response:", error);
+    return { error: "Invalid response format from AI" };
+  }
+}
+
+async function getSkillRoadmap(skill) {
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: `
+You are an AI career mentor.  
+
+The student wants to learn the skill: ${skill}.  
+
+Your task: Generate an industry-standard roadmap that will prepare the student to be job-ready.  
+Rules:
+1. Roadmap should be broken down into clear stages/steps (beginner → intermediate → advanced → job-ready).  
+2. Each stage must include:  
+   - Stage name  
+   - Description of what to focus on  
+   - Key topics/skills to master  
+   - Recommended tools/technologies  
+   - Estimated duration (in weeks or months)  
+3. Ensure the roadmap is aligned with latest industry standards (2025).  
+4. Tailor the roadmap so that after completing it, the student will be ready for an entry-level industry role in that skill.  
+
+Respond strictly in JSON format with this structure:
+{
+  "skill": "${skill}",
+  "roadmap": [
+    {
+      "stage": "Stage Name",
+      "description": "Brief explanation of this stage",
+      "keyTopics": ["topic1", "topic2", "topic3"],
+      "tools": ["tool1", "tool2"],
+      "duration": "X weeks/months"
+    }
+  ],
+  "finalOutcome": "Describe the type of job roles the student will be ready for after completing this roadmap"
+}
+    `,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          skill: { type: Type.STRING },
+          roadmap: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                stage: { type: Type.STRING },
+                description: { type: Type.STRING },
+                keyTopics: { type: Type.ARRAY, items: { type: Type.STRING } },
+                tools: { type: Type.ARRAY, items: { type: Type.STRING } },
+                duration: { type: Type.STRING }
+              },
+              required: ["stage", "description", "keyTopics", "tools", "duration"]
+            }
+          },
+          finalOutcome: { type: Type.STRING }
+        },
+        required: ["skill", "roadmap", "finalOutcome"]
+      }
+    }
+  });
+
+  try {
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Error parsing AI response:", error);
+    return { error: "Invalid response format from AI" };
+  }
+}
+
+
+
+
+
+
+export {getQuiz,analyzeQuiz,DreamAnalyzer,CareerOptions,CareerBrief,getColleges,getCollegeDetails,StreamChatBot,getCourseOpportunities,getSkillRoadmap}
 
 
 

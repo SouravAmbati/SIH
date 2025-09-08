@@ -6,9 +6,15 @@ import userRouter from "./routes/user.route.js";
 import streamRouter from "./routes/stream.route.js";
 import collegeRouter from "./routes/college.route.js";
 import cookieParser from "cookie-parser";
+import voiceRoute from "./routes/voice.route.js";
 
 const app=express();
-app.use(cors());
+app.use(cors(
+    {
+        origin:"http://localhost:5173",
+        credentials:true
+    }
+));
 app.use(express.json());
 app.use(cookieParser());   
 const port=process.env.PORT;
@@ -22,7 +28,7 @@ app.get("/",(req,res)=>{
 app.use('/api/user',userRouter)
 app.use('/api/quiz',streamRouter)
 app.use('/api/college',collegeRouter)
-
+app.use('api/voice',voiceRoute)
 app.listen(port,()=>{
     console.log(`server running on port ${port}`);
     
