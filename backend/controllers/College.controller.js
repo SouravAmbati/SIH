@@ -5,6 +5,7 @@ import College from "../models/college_detail.model.js";
 export const GetColleges = async (req, res) => {
   try {
     const { location, degree_type } = req.body;
+    console.log(location, degree_type);
 
     if (!location || !degree_type) {
       return res

@@ -8,6 +8,8 @@ import collegeRouter from "./routes/college.route.js";
 import cookieParser from "cookie-parser";
 import voiceRoute from "./routes/voice.route.js";
 
+
+
 const app=express();
 app.use(cors(
     {
@@ -33,3 +35,4 @@ app.listen(port,()=>{
     console.log(`server running on port ${port}`);
     
 })
+
