@@ -21,40 +21,64 @@ export const getQuizQuestions = async (req, res) => {
   }
 };
 
-// export const analyzeAnswers=async(req,res)=>{
-//    try {
+// export const analyzeAnswers = async (req, res) => {
+//   try {
 //     let userAnswers = req.body.answers;
 //     if (!Array.isArray(userAnswers)) {
 //       return res.status(400).json({ success: false, message: "Invalid answers format" });
 //     }
 //     userAnswers = userAnswers.filter(ans => typeof ans === "string" && ans.trim() !== "");
 //     const result = await analyzeQuiz(userAnswers);
-//     res.json({ success: true, data: result });
+//     const streams = Array.isArray(result?.streamSummary)
+//       ? result.streamSummary
+//           .map(item => (item && typeof item.stream === "string" ? item.stream : null))
+//           .filter(Boolean)
+//       : [];
+
+//     if (streams.length > 0) {
+//       const uniqueStreams = [...new Set(streams)];
+//       const data=await analyzerModel.create({ streams: uniqueStreams });
+//       return res.json({ success: true, data: data });
+//     }
 //   } catch (error) {
-//     console.log(error);
-//     res.json({ success: false, message: error.message });
+//     console.error(error);
+//     return res.status(500).json({ success: false, message: error.message });
 //   }
-// }
+// };
 
 export const analyzeAnswers = async (req, res) => {
   try {
     let userAnswers = req.body.answers;
+
     if (!Array.isArray(userAnswers)) {
       return res.status(400).json({ success: false, message: "Invalid answers format" });
     }
-    userAnswers = userAnswers.filter(ans => typeof ans === "string" && ans.trim() !== "");
-    const result = await analyzeQuiz(userAnswers);
-    const streams = Array.isArray(result?.streamSummary)
-      ? result.streamSummary
-          .map(item => (item && typeof item.stream === "string" ? item.stream : null))
-          .filter(Boolean)
-      : [];
 
-    if (streams.length > 0) {
-      const uniqueStreams = [...new Set(streams)];
-      const data=await analyzerModel.create({ streams: uniqueStreams });
-      return res.json({ success: true, data: data });
+    // Clean answers
+    userAnswers = userAnswers.filter(ans => typeof ans === "string" && ans.trim() !== "");
+
+    // Analyze via Gemini
+    const result = await analyzeQuiz(userAnswers);
+
+    if (!result || !Array.isArray(result.streams)) {
+      return res.status(500).json({ success: false, message: "AI analysis failed" });
     }
+
+    const streams = result.streams.map(item => ({
+      stream: item.stream,
+      percentage: item.percentage,
+      recommendation: item.recommendation
+    }));
+
+    const bestStream = Array.isArray(result.bestStream) ? result.bestStream : [];
+
+    // Save to DB
+    const data = await analyzerModel.create({
+      streams,
+      bestStream
+    });
+
+    return res.json({ success: true, data });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: error.message });
@@ -62,24 +86,71 @@ export const analyzeAnswers = async (req, res) => {
 };
 
 
+
+// export const DreamAnalyze = async (req, res) => {
+//   try {
+//     let userDream = req.body.dream;
+
+//     if (!userDream || typeof userDream !== "string") {
+//       return res.status(400).json({ success: false, message: "Dream input is required" });
+//     }
+
+//     const result = await DreamAnalyzer(userDream);
+
+//     if (!result || !Array.isArray(result.streams)) {
+//       return res.status(500).json({ success: false, message: "AI analysis failed" });
+//     }
+
+//     const streams = result.streams.map(item => ({
+//       stream: item.stream,
+//       percentage: item.percentage,
+//       recommendation: item.recommendation
+//     }));
+
+//     const bestStream = Array.isArray(result.bestStream) ? result.bestStream : [];
+
+//     const data = await analyzerModel.create({ streams, bestStream });
+
+//     return res.json({ success: true, data });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// };
+
+
 export const DreamAnalyze = async (req, res) => {
   try {
     let userDream = req.body.dream;
-    const result = await DreamAnalyzer(userDream);
-    const streams = Array.isArray(result?.streamSummary)
-      ? result.streamSummary
-          .map(item => (item && typeof item.stream === "string" ? item.stream : null))
-          .filter(Boolean)
-      : [];
-    if (streams.length > 0) {
-      const data=await analyzerModel.create({ streams });
-      res.json({ success: true, data:data });
+
+    if (!userDream || typeof userDream !== "string") {
+      return res.status(400).json({ success: false, message: "Dream input is required" });
     }
+
+    const result = await DreamAnalyzer(userDream);
+
+    if (!result || !Array.isArray(result.streams)) {
+      return res.status(500).json({ success: false, message: "AI analysis failed" });
+    }
+
+    const streams = result.streams.map(item => ({
+      stream: item.stream,
+      percentage: item.percentage,
+      recommendation: item.recommendation
+    }));
+
+    const bestStream = Array.isArray(result.bestStream) ? result.bestStream : [];
+
+    const data = await analyzerModel.create({ streams, bestStream });
+
+    return res.json({ success: true, data });
   } catch (error) {
-    console.log(error);
-    res.json({ success: false, message: error.message });
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
 
 export const CareerOption = async (req, res) => {
   try {

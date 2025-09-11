@@ -58,34 +58,134 @@ config: {
 
 
 
+// async function getQuiz() {
+//   const response = await ai.models.generateContent({
+//     model: "gemini-2.5-flash",
+//     contents: `You are a career counselor AI. Generate a 20-question multiple-choice quiz to help identify which academic stream is best for a high school student.  
+// The streams are: Science, Commerce, Arts/Humanities, Vocational/Skill-based.  
+
+// Instructions:
+// 1. Create 5 questions for each stream (total 20 questions).  
+//    - Science: 5 questions  
+//    - Commerce: 5 questions  
+//    - Arts/Humanities: 5 questions  
+//    - Vocational/Skill-based: 5 questions  
+// 2. Each question should have 4 options (A–D).  
+// 3. The questions should assess interests, skills, and personality traits.  
+// 4. Avoid direct questions like "Do you like Science?" – instead, use scenarios or preference-based questions.  
+// 5. At the end, provide a scoring guide that maps choices to streams.  
+
+// Output format:
+// Q1. [Question]  
+// A. [Option]  
+// B. [Option]  
+// C. [Option]  
+// D. [Option]  
+// `,
+//     config: {
+//       responseMimeType: "application/json",
+//       responseSchema: {
+//         type: Type.OBJECT,
+//         properties: {
+//           questions: {
+//             type: Type.ARRAY,
+//             items: {
+//               type: Type.OBJECT,
+//               properties: {
+//                 question: { type: Type.STRING },
+//                 options: {
+//                   type: Type.OBJECT,
+//                   properties: {
+//                     A: { type: Type.STRING },
+//                     B: { type: Type.STRING },
+//                     C: { type: Type.STRING },
+//                     D: { type: Type.STRING },
+//                   },
+//                 },
+//               },
+//               propertyOrdering: ["question", "options"],
+//             },
+//           },
+//         },
+//       },
+//     },
+//   });
+
+//   const jsonResult = JSON.parse(response.text);
+//   return jsonResult;
+// }
+
+
+
+// async function analyzeQuiz(userAnswers) {
+//   const response = await ai.models.generateContent({
+//     model: "gemini-2.5-flash",
+//     contents: `
+// User selected answers: ${JSON.stringify(userAnswers)}
+    
+// Analyze the user's answers and determine the most suitable academic stream(s) based on the rules mentioned. Return only valid JSON.
+// `,
+//     config: {
+//       responseMimeType: "application/json",
+//       responseSchema: {
+//         type: Type.OBJECT,
+//         properties: {
+//           streamSummary: {
+//             type: Type.ARRAY,
+//             items: {
+//               type: Type.OBJECT,
+//               properties: {
+//                 stream: { type: Type.STRING },
+//                 count: { type: Type.NUMBER },
+//               },
+//             },
+//           },
+//           bestStream: {
+//             type: Type.ARRAY,
+//             items: { type: Type.STRING },
+//           },
+//           recommendation: { type: Type.STRING },
+//         },
+//       },
+//     },
+//   });
+
+//   return JSON.parse(response.text);
+// }
+
 async function analyzeQuiz(userAnswers) {
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: `
 User selected answers: ${JSON.stringify(userAnswers)}
-    
-Analyze the user's answers and determine the most suitable academic stream(s) based on the rules mentioned. Return only valid JSON.
+
+Analyze the user's answers and return:
+1. The percentage match for all academic streams (Science, Commerce, Arts, Vocational).
+2. A short recommendation text for each stream.
+3. The best stream(s) with the highest percentage match.
+
+Return only valid JSON.
 `,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          streamSummary: {
+          streams: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
-                stream: { type: Type.STRING },
-                count: { type: Type.NUMBER },
+                stream: { type: Type.STRING },          // e.g. "Science"
+                percentage: { type: Type.NUMBER },      // e.g. 78
+                recommendation: { type: Type.STRING }   // e.g. "Good for analytical thinkers"
               },
             },
           },
           bestStream: {
             type: Type.ARRAY,
-            items: { type: Type.STRING },
-          },
-          recommendation: { type: Type.STRING },
+            items: { type: Type.STRING },               // e.g. ["Commerce"]
+          }
         },
       },
     },
@@ -94,34 +194,80 @@ Analyze the user's answers and determine the most suitable academic stream(s) ba
   return JSON.parse(response.text);
 }
 
+
+
+
+// async function DreamAnalyzer(userAnswers) {
+//   const response = await ai.models.generateContent({
+//     model: "gemini-2.5-flash",
+//     contents: `
+// The student will write freely about what they love to do, their dreams, and their interests.  
+// Act as a supportive career counselor.  
+// Based on ${userAnswers}, suggest  best academic streams   
+
+// Respond in JSON:  
+// {
+//   "stream": "chosen stream",
+// }
+// .
+// `,
+//     config: {
+//       responseMimeType: "application/json",
+//       responseSchema: {
+//         type: Type.OBJECT,
+//         properties: {
+//           streamSummary: {
+//             type: Type.ARRAY,
+//             items: {
+//               type: Type.OBJECT,
+//               properties: {
+//                 stream: { type: Type.STRING },
+//               },
+//             },
+//           },
+//         },
+//       },
+//     },
+//   });
+
+//   return JSON.parse(response.text);
+// }
+
 async function DreamAnalyzer(userAnswers) {
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: `
-The student will write freely about what they love to do, their dreams, and their interests.  
+The student writes freely about what they love to do, their dreams, and their interests.  
 Act as a supportive career counselor.  
-Based on ${userAnswers}, suggest  best academic streams   
 
-Respond in JSON:  
-{
-  "stream": "chosen stream",
-}
-.
+Based on the student's input: ${userAnswers},  
+analyze and return:
+1. Percentage match for each stream (Science, Commerce, Arts, Vocational).
+2. A short recommendation for each stream.
+3. The best stream(s) with the highest percentage.
+
+Return only valid JSON.
 `,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          streamSummary: {
+          streams: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
                 stream: { type: Type.STRING },
+                percentage: { type: Type.NUMBER },
+                recommendation: { type: Type.STRING }
               },
             },
           },
+          bestStream: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+          }
         },
       },
     },
@@ -611,20 +757,4 @@ export {getQuiz,analyzeQuiz,DreamAnalyzer,CareerOptions,CareerBrief,getColleges,
 
 
 
-`You are an AI career counselor.  
-The student has been matched with the academic stream: {STREAM}.  
-Suggest 8–10 possible career paths for this stream.  
-Only return the career path names in a JSON array.  
 
-Respond in JSON:  
-{
-  "stream": "{STREAM}",
-  "career_paths": [
-    "Career 1",
-    "Career 2",
-    "Career 3",
-    ...
-  ]
-}
-
-`
